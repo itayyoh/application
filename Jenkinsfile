@@ -27,10 +27,17 @@ pipeline {
                         python -m venv venv
                         . venv/bin/activate
                         python -m pip install --upgrade pip
+                        
+                        # Install requirements and test dependencies
                         pip install -r application/requirements.txt
                         pip install pytest pytest-cov
+                        
+                        # Create test structure
                         mkdir -p application/tests
-                        python -m pytest application/tests/ --cov=application/app --cov-report=xml -v
+                        
+                        # Run tests from application directory
+                        cd application
+                        python -m pytest tests/ --cov=app --cov-report=xml -v
                     '''
                 }
             }

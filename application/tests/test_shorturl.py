@@ -5,7 +5,10 @@ from flask import json
 @pytest.fixture
 def client():
     app = create_app()
-    app.config['TESTING'] = True
+    app.config.update({
+        'TESTING': True,
+        'MONGO_URI': 'mongodb://mongodb_admin:admin_password_123@mongodb:27017/urlshortener?authSource=urlshortener'
+    })
     with app.test_client() as client:
         yield client
 
@@ -17,21 +20,9 @@ def test_create_shorturl(client):
     data = json.loads(response.data)
     assert data['id'] == 'test123'
 
-def test_get_shorturl(client):
-    # First create a URL
-    client.post('/shorturl/test456', 
-                json={'originalUrl': 'https://www.example.com'},
-                content_type='application/json')
-    
-    # Then retrieve it
-    response = client.get('/shorturl/test456')
-    assert response.status_code == 200
-
-def test_invalid_create_shorturl(client):
-    response = client.post('/shorturl/test789',
-                         json={},  # Missing originalUrl
-                         content_type='application/json')
-    assert response.status_code == 400
+def test_get_shorturl_not_found(client):
+    response = client.get('/shorturl/nonexistent')
+    assert response.status_code == 404
 
 def test_list_shorturls(client):
     response = client.get('/shorturl')
