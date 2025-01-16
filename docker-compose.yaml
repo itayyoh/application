@@ -12,13 +12,13 @@ services:
     volumes:
       - ./application/app/static:/app/static
     ports:
-      - "5000:5000"  # Added port mapping
-    healthcheck:  # Added healthcheck
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
-      interval: 10s
-      timeout: 5s
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "--unix-socket", "/dev/stdout", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -32,8 +32,8 @@ services:
       - "80:80"
     depends_on:
       web:
-        condition: service_healthy  # Updated to wait for web service health
-    networks:  # Added explicit network config
+        condition: service_healthy
+    networks:
       - app-network
 
   mongodb:
@@ -49,10 +49,10 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
-    networks:  # Added explicit network config
+    networks:
       - app-network
 
-networks:  # Added networks section
+networks:
   app-network:
     driver: bridge
 
