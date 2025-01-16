@@ -18,9 +18,10 @@ FROM python:3.9.18-slim as runtime
 # Create a non-root user
 RUN useradd -m -u 1000 appuser
 
-# Install only runtime dependencies
+# Install runtime dependencies and curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -36,6 +37,9 @@ COPY application/app ./app
 ENV FLASK_APP=app \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
+
+# Expose port 5000
+EXPOSE 5000
 
 # Switch to non-root user
 USER appuser

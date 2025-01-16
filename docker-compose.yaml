@@ -11,6 +11,14 @@ services:
       - MONGO_DATABASE=${MONGO_DATABASE}
     volumes:
       - ./application/app/static:/app/static
+    ports:
+      - "5000:5000"  # Added port mapping
+    healthcheck:  # Added healthcheck
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -23,7 +31,10 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - web
+      web:
+        condition: service_healthy  # Updated to wait for web service health
+    networks:  # Added explicit network config
+      - app-network
 
   mongodb:
     image: mongo:5.0.22
@@ -38,6 +49,12 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
+    networks:  # Added explicit network config
+      - app-network
+
+networks:  # Added networks section
+  app-network:
+    driver: bridge
 
 volumes:
   mongodb_data:
