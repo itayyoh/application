@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.9'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
     
     environment {
         ECR_REGISTRY = '123456789012.dkr.ecr.region.amazonaws.com'  // Replace with your ECR registry
@@ -21,21 +16,19 @@ pipeline {
         }
         
         stage('Unit Tests') {
+            agent {
+                docker {
+                    image 'python:3.9'
+                    reuseNode true
+                }
+            }
             steps {
                 script {
                     sh '''
                         python -m venv venv
                         . venv/bin/activate
                         python -m pip install --upgrade pip
-                        
-                        # Install requirements and test dependencies
                         pip install -r application/requirements.txt
-                        pip install pytest pytest-cov
-                        
-                        # Create test structure
-                        mkdir -p application/tests
-                        
-                        # Run tests from application directory
                         cd application
                         python -m pytest tests/ --cov=app --cov-report=xml -v
                     '''
@@ -46,19 +39,27 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} ."
+                    sh """
+                        docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
+                        docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
+                    """
                 }
             }
         }
         
         stage('Integration Test') {
             steps {
-                sh '''
-                    docker-compose -f docker-compose.test.yaml up -d
-                    sleep 30
-                    curl --fail http://localhost:80 || exit 1
-                    docker-compose -f docker-compose.test.yaml down
-                '''
+                script {
+                    sh '''
+                        docker-compose -f docker-compose.test.yaml up -d
+                        sleep 30
+                        
+                        # Basic health check
+                        curl --fail http://localhost:80 || exit 1
+                        
+                        docker-compose -f docker-compose.test.yaml down
+                    '''
+                }
             }
         }
         
