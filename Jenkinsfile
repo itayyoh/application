@@ -65,7 +65,22 @@ EOL
                         
                         # Start services
                         docker compose -f docker-compose.test.yaml up -d
-                        sleep 30
+                        
+                        # Wait a bit and check container logs
+                        sleep 5
+                        echo "MongoDB Logs:"
+                        docker compose -f docker-compose.test.yaml logs mongodb
+                        
+                        # Check container status
+                        echo "Container Status:"
+                        docker compose -f docker-compose.test.yaml ps
+                        
+                        # Additional container inspection
+                        echo "MongoDB Container Details:"
+                        MONGO_CONTAINER_ID=$(docker compose -f docker-compose.test.yaml ps -q mongodb)
+                        docker inspect $MONGO_CONTAINER_ID
+                        
+                        sleep 25
                         
                         # Basic health check
                         curl --fail http://localhost:80 || exit 1
