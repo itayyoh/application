@@ -8,19 +8,24 @@ services:
     environment:
       - FLASK_ENV=testing
       - TESTING=True
-    command: ["python", "-m", "pytest", "tests/"]
+    ports:
+      - "5000:5000"
 
   mongodb:
     extends:
       file: docker-compose.yaml
       service: mongodb
-
+    ports:
+      - "27017:27017"
+    
   nginx:
     extends:
       file: docker-compose.yaml
       service: nginx
-    profiles:
-      - "do-not-start"
+    ports:
+      - "80:80"
+    depends_on:
+      - web
 
 volumes:
   mongodb_data:
