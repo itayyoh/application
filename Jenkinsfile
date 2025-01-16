@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        ECR_REGISTRY = credentials('ecr-registry')
+        ECR_REGISTRY = '600627353694.dkr.ecr.ap-south-1.amazonaws.com/itay/short-url'  // Replace with your ECR registry
         ECR_REPOSITORY = 'demo-url-shortener'
         IMAGE_TAG = "${env.GIT_COMMIT.take(7)}"
     }
@@ -14,38 +14,21 @@ pipeline {
                 cleanWs()
                 
                 // Checkout from GitHub using credentials
-                git branch: 'main',
-                    credentialsId: 'github-credentials',
-                    url: 'https://github.com/YOUR_USERNAME/url-shortener.git' // change username
+                checkout scm
             }
         }
         
         stage('Unit Tests') {
             steps {
                 script {
-                    // Create and activate virtual environment
                     sh '''
                         python3 -m venv venv
                         . venv/bin/activate
-                        
-                        # Install dependencies and pytest
                         pip install -r application/requirements.txt
                         pip install pytest pytest-cov
-                        
-                        # Create tests directory if it doesn't exist
                         mkdir -p application/tests
-                        
-                        # Run tests with coverage
-                        cd application
-                        python -m pytest tests/ --cov=app --cov-report=xml -v
+                        python -m pytest application/tests/ --cov=application/app --cov-report=xml -v
                     '''
-                }
-            }
-            post {
-                success {
-                    // Archive test results and coverage report
-                    junit allowEmptyResults: true, testResults: '**/test-results/*.xml'
-                    publishCoverage adapters: [coberturaAdapter('**/coverage.xml')]
                 }
             }
         }
@@ -53,7 +36,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${ECR_REPOSITORY}:${IMAGE_TAG}", "-f Dockerfile .")
+                    sh "docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -62,11 +45,8 @@ pipeline {
             steps {
                 sh '''
                     docker-compose -f docker-compose.test.yaml up -d
-                    sleep 30  # Wait for services to be healthy
-                    
-                    # Basic health check
+                    sleep 30
                     curl --fail http://localhost:80 || exit 1
-                    
                     docker-compose -f docker-compose.test.yaml down
                 '''
             }
@@ -91,12 +71,13 @@ pipeline {
     
     post {
         always {
-            // Cleanup
-            sh '''
-                docker-compose down || true
-                docker rmi ${ECR_REPOSITORY}:${IMAGE_TAG} || true
-            '''
-            cleanWs()
+            script {
+                sh '''
+                    docker-compose down || true
+                    rm -rf venv || true
+                '''
+                cleanWs()
+            }
         }
     }
 }
