@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      target: runtime
+    environment:
+      - FLASK_ENV=testing
+      - TESTING=True
+    command: ["python", "-m", "pytest", "tests/"]
+
+  mongodb:
+    command: ["mongod", "--quiet"]
+    
+  nginx:
+    profiles:
+      - "do-not-start"
