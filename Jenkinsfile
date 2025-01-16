@@ -50,14 +50,20 @@ pipeline {
         stage('Integration Test') {
             steps {
                 script {
-                    // Copy .env file for testing
                     sh '''
-                        echo "MONGO_INITDB_ROOT_USERNAME=mongodb_admin" > .env
-                        echo "MONGO_INITDB_ROOT_PASSWORD=admin_password_123" >> .env
-                        echo "MONGO_APP_USERNAME=url_shortener_user" >> .env
-                        echo "MONGO_APP_PASSWORD=app_password_123" >> .env
-                        echo "MONGO_DATABASE=urlshortener" >> .env
+                        # Create env file
+                        cat > .env << EOL
+MONGO_INITDB_ROOT_USERNAME=mongodb_admin
+MONGO_INITDB_ROOT_PASSWORD=admin_password_123
+MONGO_APP_USERNAME=url_shortener_user
+MONGO_APP_PASSWORD=app_password_123
+MONGO_DATABASE=urlshortener
+EOL
                         
+                        # Show docker-compose config for debugging
+                        docker compose -f docker-compose.test.yaml config
+                        
+                        # Start services
                         docker compose -f docker-compose.test.yaml up -d
                         sleep 30
                         

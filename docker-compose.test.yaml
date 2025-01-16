@@ -1,5 +1,8 @@
 services:
   web:
+    extends:
+      file: docker-compose.yaml
+      service: web
     build:
       target: runtime
     environment:
@@ -8,8 +11,14 @@ services:
     command: ["python", "-m", "pytest", "tests/"]
 
   mongodb:
+    extends:
+      file: docker-compose.yaml
+      service: mongodb
     command: ["mongod", "--quiet"]
     
   nginx:
+    extends:
+      file: docker-compose.yaml
+      service: nginx
     profiles:
       - "do-not-start"
