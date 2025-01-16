@@ -2,9 +2,10 @@ pipeline {
     agent any
     
     environment {
-        ECR_REGISTRY = '123456789012.dkr.ecr.region.amazonaws.com'  // Replace with your ECR registry
+        ECR_REGISTRY = '600627353694.dkr.ecr.ap-south-1.amazonaws.com/itay/short-url'  // Replace with your ECR registry
         ECR_REPOSITORY = 'demo-url-shortener'
         IMAGE_TAG = "${env.GIT_COMMIT.take(7)}"
+        PATH = "/usr/local/bin:${env.PATH}"
     }
     
     stages {
