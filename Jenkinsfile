@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        ECR_REGISTRY = '600627353694.dkr.ecr.ap-south-1.amazonaws.com/itay/short-url'  // Replace with your ECR registry
+        ECR_REGISTRY = '123456789012.dkr.ecr.region.amazonaws.com'  // Replace with your ECR registry
         ECR_REPOSITORY = 'demo-url-shortener'
         IMAGE_TAG = "${env.GIT_COMMIT.take(7)}"
     }
@@ -18,14 +18,35 @@ pipeline {
             }
         }
         
+        stage('Setup Python Environment') {
+            steps {
+                script {
+                    sh '''
+                        # Check and install required packages
+                        if ! dpkg -l | grep -q python3-venv; then
+                            echo "Installing python3-venv..."
+                            sudo apt-get update
+                            sudo apt-get install -y python3-venv
+                        fi
+                        
+                        # Create and setup virtual environment
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        
+                        # Upgrade pip and install requirements
+                        python -m pip install --upgrade pip
+                        pip install -r application/requirements.txt
+                        pip install pytest pytest-cov
+                    '''
+                }
+            }
+        }
+        
         stage('Unit Tests') {
             steps {
                 script {
                     sh '''
-                        python3 -m venv venv
                         . venv/bin/activate
-                        pip install -r application/requirements.txt
-                        pip install pytest pytest-cov
                         mkdir -p application/tests
                         python -m pytest application/tests/ --cov=application/app --cov-report=xml -v
                     '''
