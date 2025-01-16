@@ -22,3 +22,7 @@ services:
       service: nginx
     profiles:
       - "do-not-start"
+
+volumes:
+  mongodb_data:
+    # This defines the volume that mongodb service needs
