@@ -44,5 +44,5 @@ EXPOSE 5000
 # Switch to non-root user
 USER appuser
 
-# Command to run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:create_app()"]
+# Command to run the application with debug logging
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--log-level", "debug", "--error-logfile", "-", "--access-logfile", "-", "app:create_app()"]
