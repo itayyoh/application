@@ -5,7 +5,6 @@ pipeline {
         ECR_REGISTRY = '600627353694.dkr.ecr.ap-south-1.amazonaws.com/itay/short-url'  // Replace with your ECR registry
         ECR_REPOSITORY = 'demo-url-shortener'
         IMAGE_TAG = "${env.GIT_COMMIT.take(7)}"
-        PATH = "/usr/bin:/usr/local/bin:${env.PATH}"
     }
     
     stages {
@@ -52,13 +51,13 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        /usr/bin/docker-compose -f docker-compose.test.yaml up -d
+                        docker compose -f docker-compose.test.yaml up -d
                         sleep 30
                         
                         # Basic health check
                         curl --fail http://localhost:80 || exit 1
                         
-                        /usr/bin/docker-compose -f docker-compose.test.yaml down
+                        docker compose -f docker-compose.test.yaml down
                     '''
                 }
             }
@@ -85,7 +84,7 @@ pipeline {
         always {
             script {
                 sh '''
-                    /usr/bin/docker-compose down || true
+                    docker compose down || true
                     rm -rf venv || true
                 '''
                 cleanWs()
