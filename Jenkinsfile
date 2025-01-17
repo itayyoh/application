@@ -8,27 +8,35 @@ pipeline {
     }
     
     stages {
-        stage('Clone') {
+        stage('Clone from GitHub') {
             steps {
+                cleanWs()
                 checkout scm
             }
         }
         
         stage('Unit Tests') {
+            agent {
+                docker {
+                    image 'python:3.9'
+                    reuseNode true
+                }
+            }
             steps {
                 script {
                     sh '''
-                        python3 -m venv venv
+                        python -m venv venv
                         . venv/bin/activate
+                        python -m pip install --upgrade pip
                         pip install -r application/requirements.txt
                         cd application
-                        python3 -m pytest tests/ -v
+                        python -m pytest tests/ --cov=app --cov-report=xml -v
                     '''
                 }
             }
         }
         
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
                 script {
                     sh """
@@ -43,21 +51,19 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        cat > .env << EOL
+MONGO_INITDB_ROOT_USERNAME=mongodb_admin
+MONGO_INITDB_ROOT_PASSWORD=admin_password_123
+MONGO_APP_USERNAME=url_shortener_user
+MONGO_APP_PASSWORD=app_password_123
+MONGO_DATABASE=urlshortener
+EOL
+                        
+                        chmod +x e2e_tests.sh
+                        
                         docker compose up -d
                         
-                        sleep 10
-                        
-                        curl -X POST -H "Content-Type: application/json" \
-                             -d '{"originalUrl":"https://example.com"}' \
-                             http://localhost:80/shorturl/test1
-                        
-                        curl http://localhost:80/shorturl/test1
-                        
-                        curl -X PUT -H "Content-Type: application/json" \
-                             -d '{"originalUrl":"https://updated-example.com"}' \
-                             http://localhost:80/shorturl/test1
-                        
-                        curl -X DELETE http://localhost:80/shorturl/test1
+                        ./e2e_tests.sh
                         
                         docker compose down
                     '''
@@ -67,12 +73,16 @@ pipeline {
         
         stage('Push to ECR') {
             steps {
-                withAWS(credentials: 'AWS-CREDENTIALS', region: 'ap-south-1') {
-                    sh """
-                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-                        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                    """
+                script {
+                    withAWS(credentials: 'aws-credentials', region: 'ap-south-1') {
+                        sh """
+                            aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                        """
+                    }
                 }
             }
         }
@@ -80,7 +90,14 @@ pipeline {
     
     post {
         always {
-            cleanWs()
+            script {
+                sh '''
+                    docker compose down || true
+                    rm -rf venv || true
+                    rm -f .env || true
+                '''
+                cleanWs()
+            }
         }
     }
 }
