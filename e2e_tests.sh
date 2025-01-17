@@ -3,8 +3,8 @@
 # Exit on any error
 set -e
 
-# Base URL
-BASE_URL="http://localhost:80"
+# We'll use the service name 'nginx' since we're in the same Docker network
+BASE_URL="http://nginx:80"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -26,7 +26,7 @@ wait_for_service() {
     echo "Waiting for services to be ready..."
     
     while [ $retries -gt 0 ]; do
-        if curl -s http://localhost:80 > /dev/null; then
+        if curl -s --fail -m 5 nginx:80 > /dev/null; then
             echo "Services are ready!"
             return 0
         fi
@@ -36,6 +36,7 @@ wait_for_service() {
     done
     
     log_error "Services failed to become ready in time"
+    docker compose logs
     return 1
 }
 
