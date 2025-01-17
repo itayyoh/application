@@ -73,7 +73,7 @@ EOL
         
         stage('Push to ECR') {
             steps {
-                withAWS(credentials: 'AWS-CREDENTIALS', region: 'ap-south-1') {
+                withAWS(credentials: 'AWS_CREDENTIALS', region: 'ap-south-1') {
                     sh """
                         aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
                         docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
