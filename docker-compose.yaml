@@ -12,18 +12,15 @@ services:
       - ./application/app/static:/app/static
 
   nginx:
-    image: nginx:1.25.3
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
       - "80:80"
-    # Copy config files instead of mounting them
     volumes:
       - ./application/app/static:/app/static:ro
-    # Add config files during build
-    configs:
-      - source: nginx_conf
-        target: /etc/nginx/nginx.conf
-      - source: default_conf
-        target: /etc/nginx/conf.d/default.conf
+    depends_on:
+      - web
 
   mongodb:
     image: mongo:5.0.22
@@ -35,9 +32,3 @@ services:
 
 volumes:
   mongodb_data:
-
-configs:
-  nginx_conf:
-    file: ./nginx/nginx.conf
-  default_conf:
-    file: ./nginx/conf.d/default.conf
