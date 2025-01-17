@@ -11,8 +11,8 @@ services:
 
   nginx:
     build: 
-      context: .
-      dockerfile: Dockerfile.nginx
+      context: ./nginx
+      dockerfile: Dockerfile
     ports:
       - "80:80"
     volumes:
