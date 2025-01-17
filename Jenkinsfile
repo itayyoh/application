@@ -43,46 +43,32 @@ pipeline {
         
         stage('E2E Tests') {
             steps {
-                sh '''
-                    # Debug: Print working directory and list files
-                    echo "Current directory: $PWD"
-                    echo "Directory contents:"
-                    ls -la
-                    echo "Nginx directory contents:"
-                    ls -la nginx/ || echo "nginx directory not found"
-                    
-                    # Verify nginx config files exist
-                    if [ ! -f "nginx/nginx.conf" ]; then
-                        echo "Error: nginx.conf not found!"
-                        exit 1
-                    fi
-                    
-                    if [ ! -d "nginx/conf.d" ]; then
-                        echo "Error: conf.d directory not found!"
-                        exit 1
-                    fi
-                    
-                    if [ ! -f "nginx/conf.d/default.conf" ]; then
-                        echo "Error: default.conf not found!"
-                        exit 1
-                    fi
-
-                    # Create env file
-                    cat > .env << EOL
+                script {
+                    sh '''
+                        # Create env file
+                        cat > .env << EOL
 MONGO_INITDB_ROOT_USERNAME=mongodb_admin
 MONGO_INITDB_ROOT_PASSWORD=admin_password_123
 MONGO_APP_USERNAME=url_shortener_user
 MONGO_APP_PASSWORD=app_password_123
 MONGO_DATABASE=urlshortener
 EOL
-                    
-                    # Start services and run tests
-                    docker compose config  # Verify docker-compose configuration
-                    docker compose up -d
-                    chmod +x e2e_tests.sh
-                    ./e2e_tests.sh
-                    docker compose down
-                '''
+                        
+                        # Start services
+                        docker compose up -d
+                        
+                        # Run tests in a container that's connected to the network
+                        docker run --rm \
+                            --network shorturl-ci_default \
+                            -v ${PWD}/e2e_tests.sh:/e2e_tests.sh \
+                            --entrypoint=/bin/sh \
+                            curlimages/curl:8.0.1 \
+                            -c "/e2e_tests.sh"
+                        
+                        # Cleanup
+                        docker compose down
+                    '''
+                }
             }
         }
         
