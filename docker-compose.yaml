@@ -1,0 +1,32 @@
+services:
+  web:
+    build: .
+    environment:
+      - FLASK_APP=app
+      - MONGO_USERNAME=${MONGO_APP_USERNAME}
+      - MONGO_PASSWORD=${MONGO_APP_PASSWORD}
+      - MONGO_DATABASE=${MONGO_DATABASE}
+    volumes:
+      - ./application/app/static:/app/static
+
+  nginx:
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./application/app/static:/app/static:ro
+    depends_on:
+      - web
+
+  mongodb:
+    image: mongo:5.0.22
+    env_file:
+      - .env
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
+volumes:
+  mongodb_data:
