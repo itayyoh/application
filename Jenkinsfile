@@ -8,9 +8,8 @@ pipeline {
     }
     
     stages {
-        stage('Clone from GitHub') {
+        stage('Clone') {
             steps {
-                cleanWs()
                 checkout scm
             }
         }
@@ -23,80 +22,54 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    sh '''
-                        python -m venv venv
-                        . venv/bin/activate
-                        python -m pip install --upgrade pip
-                        pip install -r application/requirements.txt
-                        cd application
-                        python -m pytest tests/ --cov=app --cov-report=xml -v
-                    '''
-                }
+                sh '''
+                    python -m venv venv
+                    . venv/bin/activate
+                    pip install -r application/requirements.txt
+                    cd application
+                    python -m pytest tests/ --cov=app --cov-report=xml -v
+                '''
             }
         }
         
-        stage('Build Docker Image') {
+        stage('Build') {
             steps {
-                script {
-                    sh """
-                        docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
-                        docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
-                    """
-                }
+                sh """
+                    docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
+                    docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
+                """
             }
         }
         
         stage('E2E Tests') {
             steps {
-                script {
-                    sh '''
-                        # Create env file
-                        cat > .env << EOL
+                sh '''
+                    # Create env file
+                    cat > .env << EOL
 MONGO_INITDB_ROOT_USERNAME=mongodb_admin
 MONGO_INITDB_ROOT_PASSWORD=admin_password_123
 MONGO_APP_USERNAME=url_shortener_user
 MONGO_APP_PASSWORD=app_password_123
 MONGO_DATABASE=urlshortener
 EOL
-                        
-                        # Ensure nginx directories exist and have correct permissions
-                        mkdir -p nginx/conf.d
-                        
-                        # List files to verify structure
-                        echo "Current directory structure:"
-                        ls -la
-                        echo "Nginx directory structure:"
-                        ls -la nginx/
-                        
-                        # Make the test script executable
-                        chmod +x e2e_tests.sh
-                        
-                        # Start services
-                        docker compose up -d
-                        
-                        # Run E2E tests
-                        ./e2e_tests.sh
-                        
-                        # Clean up
-                        docker compose down
-                    '''
-                }
+                    
+                    # Start services and run tests
+                    docker compose up -d
+                    chmod +x e2e_tests.sh
+                    ./e2e_tests.sh
+                    docker compose down
+                '''
             }
         }
         
         stage('Push to ECR') {
             steps {
-                script {
-                    withAWS(credentials: 'aws-credentials', region: 'ap-south-1') {
-                        sh """
-                            aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-                            docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                        """
-                    }
+                withAWS(credentials: 'aws-credentials', region: 'ap-south-1') {
+                    sh """
+                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                    """
                 }
             }
         }
@@ -104,14 +77,8 @@ EOL
     
     post {
         always {
-            script {
-                sh '''
-                    docker compose down || true
-                    rm -rf venv || true
-                    rm -f .env || true
-                '''
-                cleanWs()
-            }
+            sh 'docker compose down || true'
+            cleanWs()
         }
     }
 }
