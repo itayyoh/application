@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   web:
     build: .
@@ -13,12 +15,15 @@ services:
     image: nginx:1.25.3
     ports:
       - "80:80"
+    # Copy config files instead of mounting them
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./application/app/static:/app/static:ro
-    depends_on:
-      - web
+    # Add config files during build
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/nginx.conf
+      - source: default_conf
+        target: /etc/nginx/conf.d/default.conf
 
   mongodb:
     image: mongo:5.0.22
@@ -30,3 +35,9 @@ services:
 
 volumes:
   mongodb_data:
+
+configs:
+  nginx_conf:
+    file: ./nginx/nginx.conf
+  default_conf:
+    file: ./nginx/conf.d/default.conf
