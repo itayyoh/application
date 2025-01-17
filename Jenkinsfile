@@ -57,15 +57,12 @@ EOL
                         # Start services
                         docker compose up -d
                         
-                        # Make script executable
-                        chmod +x e2e_tests.sh
-                        
                         # Run tests in Alpine container
                         docker run --rm \
                             --network shorturl-ci_default \
                             -v ${PWD}/e2e_tests.sh:/e2e_tests.sh \
                             alpine:3.18 \
-                            sh -c "apk add --no-cache curl && /e2e_tests.sh"
+                            sh -c "apk add --no-cache curl && sh /e2e_tests.sh"
                         
                         # Cleanup
                         docker compose down
