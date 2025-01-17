@@ -5,6 +5,7 @@ pipeline {
         ECR_REGISTRY = '600627353694.dkr.ecr.ap-south-1.amazonaws.com'
         ECR_REPOSITORY = 'itay/short-url'
         IMAGE_TAG = "${env.GIT_COMMIT.take(7)}"
+        FULL_IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
     }
     
     stages {
@@ -35,8 +36,8 @@ pipeline {
         stage('Build') {
             steps {
                 sh """
-                    docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
-                    docker tag ${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
+                    docker build -t ${FULL_IMAGE_NAME}:${IMAGE_TAG} .
+                    docker tag ${FULL_IMAGE_NAME}:${IMAGE_TAG} ${FULL_IMAGE_NAME}:latest
                 """
             }
         }
@@ -73,13 +74,11 @@ EOL
         
         stage('Push to ECR') {
             steps {
-                withAWS(credentials: 'AWS_CREDENTIALS', region: 'ap-south-1') {
-                    sh """
-                        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-                        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                    """
-                }
+                sh """
+                    aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    docker push ${FULL_IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${FULL_IMAGE_NAME}:latest
+                """
             }
         }
     }
