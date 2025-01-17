@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web:
     build: .
@@ -13,7 +11,7 @@ services:
 
   nginx:
     build: 
-      context: ./nginx
+      context: .
       dockerfile: Dockerfile.nginx
     ports:
       - "80:80"
