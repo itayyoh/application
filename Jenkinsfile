@@ -51,6 +51,7 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        # Create env file
                         cat > .env << EOL
 MONGO_INITDB_ROOT_USERNAME=mongodb_admin
 MONGO_INITDB_ROOT_PASSWORD=admin_password_123
@@ -59,12 +60,25 @@ MONGO_APP_PASSWORD=app_password_123
 MONGO_DATABASE=urlshortener
 EOL
                         
+                        # Ensure nginx directories exist and have correct permissions
+                        mkdir -p nginx/conf.d
+                        
+                        # List files to verify structure
+                        echo "Current directory structure:"
+                        ls -la
+                        echo "Nginx directory structure:"
+                        ls -la nginx/
+                        
+                        # Make the test script executable
                         chmod +x e2e_tests.sh
                         
+                        # Start services
                         docker compose up -d
                         
+                        # Run E2E tests
                         ./e2e_tests.sh
                         
+                        # Clean up
                         docker compose down
                     '''
                 }
