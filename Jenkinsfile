@@ -67,7 +67,8 @@ pipeline {
                             docker build -t ${FULL_IMAGE_NAME}:${branchTag}-${GIT_COMMIT_SHORT} .
                         """
                     } 
-                    else if (env.BRANCH_NAME == 'main') {
+
+                    else if (env.BRANCH_NAME == 'MAIN') {
                         sh """
                             docker build -t ${FULL_IMAGE_NAME}:${env.NEW_VERSION} .
                             docker tag ${FULL_IMAGE_NAME}:${env.NEW_VERSION} ${FULL_IMAGE_NAME}:latest
@@ -132,7 +133,11 @@ EOL
                         aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
                         docker push ${FULL_IMAGE_NAME}:${env.NEW_VERSION}
                         docker push ${FULL_IMAGE_NAME}:latest
-                        
+
+                        # Configure Git user for tagging
+                        git config user.name "itayyoh"
+                        git config user.email "itay.yohanok10@gmail.com"
+
                         # Create and push Git tag
                         git tag -a ${env.NEW_VERSION} -m "Release ${env.NEW_VERSION}"
                         git push origin ${env.NEW_VERSION}
