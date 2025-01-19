@@ -67,7 +67,7 @@ pipeline {
                             docker build -t ${FULL_IMAGE_NAME}:${branchTag}-${GIT_COMMIT_SHORT} .
                         """
                     } 
-                    else if (env.BRANCH_NAME == 'main') {
+                    else if (env.BRANCH_NAME == 'MAIN') {
                         sh """
                             docker build -t ${FULL_IMAGE_NAME}:${env.NEW_VERSION} .
                             docker tag ${FULL_IMAGE_NAME}:${env.NEW_VERSION} ${FULL_IMAGE_NAME}:latest
