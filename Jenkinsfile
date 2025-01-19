@@ -85,7 +85,7 @@ pipeline {
         stage('E2E Tests') {
             when {
                 anyOf {
-                    branch 'main'
+                    branch 'MAIN'
                     branch pattern: "feature/*", comparator: "REGEXP"
                 }
             }
@@ -124,7 +124,7 @@ EOL
         
         stage('Tag and Push') {
             when {
-                branch 'main'
+                branch 'MAIN'
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'AWS_CREDENTIALS', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
