@@ -102,6 +102,9 @@ MONGO_APP_PASSWORD=app_password_123
 MONGO_DATABASE=urlshortener
 EOL
                             
+                            docker network create shorturl-ci_default || true
+
+                            
                             # Start services
                             docker compose up -d
                             
