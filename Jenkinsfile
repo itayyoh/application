@@ -133,6 +133,11 @@ EOL
                         docker push ${FULL_IMAGE_NAME}:${env.NEW_VERSION}
                         docker push ${FULL_IMAGE_NAME}:latest
                         
+                        # Configure Git user for tagging
+                        git config user.name "itayyoh"
+                        git config user.email "itay.yohanok10@gmail.com"
+
+
                         # Create and push Git tag
                         git tag -a ${env.NEW_VERSION} -m "Release ${env.NEW_VERSION}"
                         git push origin ${env.NEW_VERSION}
