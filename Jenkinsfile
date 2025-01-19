@@ -4,15 +4,39 @@ pipeline {
     environment {
         ECR_REGISTRY = '600627353694.dkr.ecr.ap-south-1.amazonaws.com'
         ECR_REPOSITORY = 'itay/short-url'
-        IMAGE_TAG = "${env.GIT_COMMIT.take(7)}"
+        GIT_COMMIT_SHORT = "${env.GIT_COMMIT.take(7)}"
         FULL_IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
         AWS_DEFAULT_REGION = 'ap-south-1'
+        BRANCH_NAME = "${env.BRANCH_NAME}"
     }
     
     stages {
         stage('Clone') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Set Version') {
+            steps {
+                script {
+                    // Get the latest tag if it exists
+                    def latestTag = sh(script: """
+                        git fetch --tags
+                        git tag -l 'v*' | sort -V | tail -n 1
+                    """, returnStdout: true).trim()
+
+                    if (latestTag) {
+                        // If tag exists, increment patch version
+                        def (major, minor, patch) = latestTag.substring(1).tokenize('.')
+                        env.NEW_VERSION = "v${major}.${minor}.${(patch as int) + 1}"
+                    } else {
+                        // If no tag exists, start with v1.0.0
+                        env.NEW_VERSION = 'v1.0.0'
+                    }
+                    
+                    echo "Building version: ${env.NEW_VERSION}"
+                }
             }
         }
         
@@ -36,50 +60,79 @@ pipeline {
         
         stage('Build') {
             steps {
-                sh """
-                    docker build -t ${FULL_IMAGE_NAME}:${IMAGE_TAG} .
-                    docker tag ${FULL_IMAGE_NAME}:${IMAGE_TAG} ${FULL_IMAGE_NAME}:latest
-                """
+                script {
+                    if (env.BRANCH_NAME.startsWith('feature/')) {
+                        def branchTag = env.BRANCH_NAME.replaceAll('/', '-')
+                        sh """
+                            docker build -t ${FULL_IMAGE_NAME}:${branchTag}-${GIT_COMMIT_SHORT} .
+                        """
+                    } 
+                    else if (env.BRANCH_NAME == 'main') {
+                        sh """
+                            docker build -t ${FULL_IMAGE_NAME}:${env.NEW_VERSION} .
+                            docker tag ${FULL_IMAGE_NAME}:${env.NEW_VERSION} ${FULL_IMAGE_NAME}:latest
+                        """
+                    }
+                    else {
+                        sh """
+                            docker build -t ${FULL_IMAGE_NAME}:${GIT_COMMIT_SHORT} .
+                        """
+                    }
+                }
             }
         }
         
         stage('E2E Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch pattern: "feature/*", comparator: "REGEXP"
+                }
+            }
             steps {
                 script {
-                    sh '''
-                        # Create env file
-                        cat > .env << EOL
+                    try {
+                        sh '''
+                            # Create env file
+                            cat > .env << EOL
 MONGO_INITDB_ROOT_USERNAME=mongodb_admin
 MONGO_INITDB_ROOT_PASSWORD=admin_password_123
 MONGO_APP_USERNAME=url_shortener_user
 MONGO_APP_PASSWORD=app_password_123
 MONGO_DATABASE=urlshortener
 EOL
-                        
-                        # Start services
-                        docker compose up -d
-                        
-                        # Run tests in Alpine container
-                        docker run --rm \
-                            --network shorturl-ci_default \
-                            -v ${PWD}/e2e_tests.sh:/e2e_tests.sh \
-                            alpine:3.18 \
-                            sh -c "apk add --no-cache curl && sh /e2e_tests.sh"
-                        
-                        # Cleanup
-                        docker compose down
-                    '''
+                            
+                            # Start services
+                            docker compose up -d
+                            
+                            # Run tests in Alpine container
+                            docker run --rm \
+                                --network shorturl-ci_default \
+                                -v ${PWD}/e2e_tests.sh:/e2e_tests.sh \
+                                alpine:3.18 \
+                                sh -c "apk add --no-cache curl && sh /e2e_tests.sh"
+                        '''
+                    } finally {
+                        sh 'docker compose down'
+                    }
                 }
             }
         }
         
-        stage('Push to ECR') {
+        stage('Tag and Push') {
+            when {
+                branch 'main'
+            }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'AWS_CREDENTIALS', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     sh """
                         aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                        docker push ${FULL_IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${FULL_IMAGE_NAME}:${env.NEW_VERSION}
                         docker push ${FULL_IMAGE_NAME}:latest
+                        
+                        # Create and push Git tag
+                        git tag -a ${env.NEW_VERSION} -m "Release ${env.NEW_VERSION}"
+                        git push origin ${env.NEW_VERSION}
                     """
                 }
             }
