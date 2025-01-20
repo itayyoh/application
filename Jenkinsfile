@@ -100,7 +100,7 @@ MONGO_INITDB_ROOT_USERNAME=mongodb_admin
 MONGO_INITDB_ROOT_PASSWORD=admin_password_123
 MONGO_APP_USERNAME=url_shortener_user
 MONGO_APP_PASSWORD=app_password_123
-MONGO_DATABASE=urlshortener
+MONGO_DATABASE=urlshortener 
 EOL
                             
                             docker network create shorturl-ci_default || true
