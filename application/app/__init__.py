@@ -16,7 +16,7 @@ def create_app():
     database = os.getenv('MONGO_DATABASE', 'urlshortener')
     
     # Configure MongoDB with authentication
-    app.config["MONGO_URI"] = f"mongodb://{username}:{password}@mongodb:27017/{database}?authSource={database}"
+    app.config["MONGO_URI"] = f"mongodb://{username}:{password}@url-shortener-mongodb:27017/{database}?authSource={database}"
     
     # Initialize extensions
     mongo.init_app(app)
