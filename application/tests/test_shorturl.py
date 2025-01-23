@@ -1,5 +1,5 @@
 import pytest
-from app import create_app, mongo
+from app import create_app, mongodb
 from flask import json
 import mongomock
 from pymongo import MongoClient
@@ -15,8 +15,8 @@ def app():
     
     # Create a mongomock client
     mock_client = mongomock.MongoClient()
-    mongo.cx = mock_client
-    mongo.db = mock_client.db
+    mongodb.cx = mock_client
+    mongodb.db = mock_client.db
     
     return app
 
