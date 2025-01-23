@@ -160,6 +160,10 @@ EOL
                         yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/dev.yaml
                         yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/prod.yaml
 
+                        git config --global user.email "Jenkins@example.com"
+                        git config --global user.name "Jenkins CI"
+
+
                         # Commit and push changes
                         git add .
                         git commit -m "Update url-shortener to version ${env.NEW_VERSION}"
