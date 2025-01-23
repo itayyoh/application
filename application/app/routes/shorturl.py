@@ -6,88 +6,131 @@ shorturl_bp = Blueprint('shorturl', __name__)
 prometheus_metrics = None
 
 def init_metrics(app):
+    """Initialize Prometheus metrics for the application."""
     global prometheus_metrics
-    if prometheus_metrics is None:  # Only initialize if not already initialized
+    if prometheus_metrics is None:
         prometheus_metrics = PrometheusMetrics(app)
-
-        def register_metrics():
-            # Use a try-except block to handle potential duplicate registrations
-            try:
-                prometheus_metrics.counter('shorturl_create_total', 'Number of short URLs created')(create_short_url)
-                prometheus_metrics.counter('shorturl_get_total', 'Number of short URL retrievals')(get_short_url)
-            except ValueError as e:
-                # If metrics are already registered, just pass
-                if 'Duplicated timeseries' in str(e):
-                    pass
-                else:
-                    raise e
-
-        register_metrics()
+        
+        # Define custom metrics
+        url_counter = prometheus_metrics.counter(
+            'shorturl_urls_total', 
+            'Total number of URLs in the database'
+        )
+        create_counter = prometheus_metrics.counter(
+            'shorturl_create_total', 
+            'Number of short URLs created'
+        )
+        get_counter = prometheus_metrics.counter(
+            'shorturl_get_total', 
+            'Number of short URL retrievals'
+        )
+        update_counter = prometheus_metrics.counter(
+            'shorturl_update_total', 
+            'Number of short URL updates'
+        )
+        delete_counter = prometheus_metrics.counter(
+            'shorturl_delete_total', 
+            'Number of short URL deletions'
+        )
+        
+        # Add a gauge for current total URLs
+        url_gauge = prometheus_metrics.gauge(
+            'shorturl_current_urls',
+            'Current number of URLs in the system'
+        )
+        
+        return {
+            'url_counter': url_counter,
+            'create_counter': create_counter,
+            'get_counter': get_counter,
+            'update_counter': update_counter,
+            'delete_counter': delete_counter,
+            'url_gauge': url_gauge
+        }
 
 @shorturl_bp.route('/')
 def index():
-   return render_template('index.html')
+    """Render the main page."""
+    return render_template('index.html')
 
 @shorturl_bp.route('/shorturl/<id>', methods=['POST'])
 def create_short_url(id):
-   data = request.get_json()
-   if not data or 'originalUrl' not in data:
-       return jsonify({'error': 'originalUrl is required'}), 400
-       
-   url_mapping = {
-       '_id': id,
-       'original_url': data['originalUrl']
-   }
-   
-   try:
-       mongo.db.urls.insert_one(url_mapping)
-       return jsonify({'message': 'Short URL created', 'id': id}), 201
-   except Exception as e:
-       return jsonify({'error': 'URL already exists'}), 400
+    """Create a new short URL."""
+    if prometheus_metrics:
+        prometheus_metrics.counter('shorturl_create_total').inc()
+    
+    data = request.get_json()
+    if not data or 'originalUrl' not in data:
+        return jsonify({'error': 'originalUrl is required'}), 400
+    
+    url_mapping = {
+        '_id': id,
+        'original_url': data['originalUrl']
+    }
+    
+    try:
+        mongo.db.urls.insert_one(url_mapping)
+        # Update URL gauge after successful creation
+        if prometheus_metrics:
+            total_urls = mongo.db.urls.count_documents({})
+            prometheus_metrics.gauge('shorturl_current_urls').set(total_urls)
+        return jsonify({'message': 'Short URL created', 'id': id}), 201
+    except Exception as e:
+        return jsonify({'error': 'URL already exists'}), 400
 
 @shorturl_bp.route('/shorturl/<id>', methods=['GET'])
 def get_short_url(id):
-   url = mongo.db.urls.find_one({'_id': id})
-   if url:
-       url_data = {
-           'id': url['_id'],
-           'originalUrl': url['original_url']
-       }
-       return render_template('url_details.html', url_data=url_data)
-   return jsonify({'error': 'URL not found'}), 404
+    """Retrieve a short URL by ID."""
+    if prometheus_metrics:
+        prometheus_metrics.counter('shorturl_get_total').inc()
+    
+    url = mongo.db.urls.find_one({'_id': id})
+    if url:
+        url_data = {
+            'id': url['_id'],
+            'originalUrl': url['original_url']
+        }
+        return render_template('url_details.html', url_data=url_data)
+    return jsonify({'error': 'URL not found'}), 404
 
 @shorturl_bp.route('/shorturl', methods=['GET'])
 def list_short_urls():
-   urls = mongo.db.urls.find()
-   return jsonify({
-       'urls': [url['_id'] for url in urls]
-   })
+    """List all short URLs."""
+    urls = mongo.db.urls.find()
+    return jsonify({
+        'urls': [url['_id'] for url in urls]
+    })
 
 @shorturl_bp.route('/shorturl/<id>', methods=['PUT'])
 def update_short_url(id):
-   data = request.get_json()
-   if not data or 'originalUrl' not in data:
-       return jsonify({'error': 'originalUrl is required'}), 400
-       
-   result = mongo.db.urls.update_one(
-       {'_id': id},
-       {'$set': {'original_url': data['originalUrl']}}
-   )
-   
-   if result.modified_count:
-       return jsonify({'message': 'URL updated'})
-   return jsonify({'error': 'URL not found'}), 404
+    """Update an existing short URL."""
+    if prometheus_metrics:
+        prometheus_metrics.counter('shorturl_update_total').inc()
+    
+    data = request.get_json()
+    if not data or 'originalUrl' not in data:
+        return jsonify({'error': 'originalUrl is required'}), 400
+    
+    result = mongo.db.urls.update_one(
+        {'_id': id},
+        {'$set': {'original_url': data['originalUrl']}}
+    )
+    
+    if result.modified_count:
+        return jsonify({'message': 'URL updated'})
+    return jsonify({'error': 'URL not found'}), 404
 
 @shorturl_bp.route('/shorturl/<id>', methods=['DELETE'])
 def delete_short_url(id):
-   result = mongo.db.urls.delete_one({'_id': id})
-   if result.deleted_count:
-       return jsonify({'message': 'URL deleted'})
-   return jsonify({'error': 'URL not found'}), 404
-
-@shorturl_bp.route('/metrics')
-def get_url_metrics():
-   total_urls = mongo.db.urls.count_documents({})
-   return jsonify({
-       'total_urls': total_urls
-   })
+    """Delete a short URL."""
+    if prometheus_metrics:
+        prometheus_metrics.counter('shorturl_delete_total').inc()
+    
+    result = mongo.db.urls.delete_one({'_id': id})
+    if result.deleted_count:
+        # Update URL gauge after successful deletion
+        if prometheus_metrics:
+            total_urls = mongo.db.urls.count_documents({})
+            prometheus_metrics.gauge('shorturl_current_urls').set(total_urls)
+        return jsonify({'message': 'URL deleted'})
+    return jsonify({'error': 'URL not found'}), 404
