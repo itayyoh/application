@@ -29,6 +29,7 @@ def test_create_shorturl(client):
     response = client.post('/shorturl/test123', 
                          json={'originalUrl': 'https://www.example.com'},
                          content_type='application/json')
+    print(f"Response data: {response.data}")
     assert response.status_code == 201
     data = json.loads(response.data)
     assert data['id'] == 'test123'

@@ -63,16 +63,22 @@ def index():
 def create_short_url(id):
     """Create a new short URL."""
     data = request.get_json()
+    print(f"Received data: {data}")
+    
     if not data or 'originalUrl' not in data:
+        print("Data validation failed")
         return jsonify({'error': 'originalUrl is required'}), 400
     
     url_mapping = {
         '_id': id,
         'original_url': data['originalUrl']
     }
+    print(f"URL mapping: {url_mapping}") 
     
     existing_url = mongodb.db.urls.find_one({'_id': id})
+    print(f"Existing URL check: {existing_url}")
     if existing_url:
+        print("URL exists")
         return jsonify({'error': 'URL already exists'}), 400
     
     try:
