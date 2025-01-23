@@ -160,10 +160,16 @@ EOL
                         git checkout MAIN
                         git config --global user.email "jenkins@example.com"    
                         git config --global user.name "Jenkins CI"     
+                        
+                        # Update the url-shortener image tag in values files
                         yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/dev.yaml
                         yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/prod.yaml
+                        
+                        # Update the Chart.yaml version
+                        yq eval '.version = "${env.NEW_VERSION}"' -i apps/Chart.yaml
+                        
                         git add .
-                        git commit -m "Update url-shortener to version ${env.NEW_VERSION}"
+                        git commit -m "Update url-shortener to version ${env.NEW_VERSION} and bump Chart version"
                         git push origin MAIN
                     """
                 }
