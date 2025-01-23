@@ -150,7 +150,7 @@ EOL
                 branch 'MAIN'
             }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'GITOPS_SSH_KEY', keyFileVariable: 'SSH_KEY')]) {
+                withCredentials([sshUserPrivateKey(credentialsId: 'github', keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         # Clone GitOps repo
                         GIT_SSH_COMMAND="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" git clone ${GITOPS_REPO} gitops
