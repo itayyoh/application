@@ -1,119 +1,24 @@
-from flask import Blueprint, jsonify, request, render_template
-from app import mongo
-from prometheus_flask_exporter import PrometheusMetrics
+from flask import Flask
+from flask_pymongo import PyMongo
+import os
 
-shorturl_bp = Blueprint('shorturl', __name__)
-prometheus_metrics = None
+mongo = PyMongo()
 
-# Define metrics at module level
-create_counter = None
-get_counter = None
-update_counter = None
-delete_counter = None
-url_gauge = None
-
-def init_metrics(app):
-    """Initialize Prometheus metrics for the application."""
-    global prometheus_metrics, create_counter, get_counter, update_counter, delete_counter, url_gauge
+def create_app():
+    app = Flask(__name__)
     
-    if prometheus_metrics is None:
-        prometheus_metrics = PrometheusMetrics(app)
-        
-        # Initialize counters with descriptions
-        create_counter = prometheus_metrics.counter(
-            'shorturl_create_total', 
-            'Number of short URLs created'
-        )
-        get_counter = prometheus_metrics.counter(
-            'shorturl_get_total', 
-            'Number of short URL retrievals'
-        )
-        update_counter = prometheus_metrics.counter(
-            'shorturl_update_total', 
-            'Number of URL updates'
-        )
-        delete_counter = prometheus_metrics.counter(
-            'shorturl_delete_total', 
-            'Number of URL deletions'
-        )
-        url_gauge = prometheus_metrics.gauge(
-            'shorturl_current_urls',
-            'Current number of URLs in the system'
-        )
-
-@shorturl_bp.route('/')
-def index():
-    """Render the main page."""
-    return render_template('index.html')
-
-@shorturl_bp.route('/shorturl/<id>', methods=['POST'])
-@create_counter  # Use decorator syntax instead
-def create_short_url(id):
-    """Create a new short URL."""
-    data = request.get_json()
-    if not data or 'originalUrl' not in data:
-        return jsonify({'error': 'originalUrl is required'}), 400
+    username = os.getenv('MONGO_USERNAME', 'url_shortener_user')
+    password = os.getenv('MONGO_PASSWORD', 'app_password_123')
+    database = os.getenv('MONGO_DATABASE', 'urlshortener')
     
-    url_mapping = {
-        '_id': id,
-        'original_url': data['originalUrl']
-    }
+    app.config["MONGO_URI"] = f"mongodb://{username}:{password}@url-shortener-mongodb:27017/{database}?authSource={database}"
     
-    try:
-        mongo.db.urls.insert_one(url_mapping)
-        if url_gauge:  # Update gauge if initialized
-            total_urls = mongo.db.urls.count_documents({})
-            url_gauge.set(total_urls)
-        return jsonify({'message': 'Short URL created', 'id': id}), 201
-    except Exception as e:
-        return jsonify({'error': 'URL already exists'}), 400
-
-@shorturl_bp.route('/shorturl/<id>', methods=['GET'])
-@get_counter  # Use decorator syntax
-def get_short_url(id):
-    """Retrieve a short URL by ID."""
-    url = mongo.db.urls.find_one({'_id': id})
-    if url:
-        url_data = {
-            'id': url['_id'],
-            'originalUrl': url['original_url']
-        }
-        return render_template('url_details.html', url_data=url_data)
-    return jsonify({'error': 'URL not found'}), 404
-
-@shorturl_bp.route('/shorturl', methods=['GET'])
-def list_short_urls():
-    """List all short URLs."""
-    urls = mongo.db.urls.find()
-    return jsonify({
-        'urls': [url['_id'] for url in urls]
-    })
-
-@shorturl_bp.route('/shorturl/<id>', methods=['PUT'])
-@update_counter  # Use decorator syntax
-def update_short_url(id):
-    """Update an existing short URL."""
-    data = request.get_json()
-    if not data or 'originalUrl' not in data:
-        return jsonify({'error': 'originalUrl is required'}), 400
+    mongo.init_app(app)
     
-    result = mongo.db.urls.update_one(
-        {'_id': id},
-        {'$set': {'original_url': data['originalUrl']}}
-    )
+    from app.routes.shorturl import shorturl_bp, init_metrics
     
-    if result.modified_count:
-        return jsonify({'message': 'URL updated'})
-    return jsonify({'error': 'URL not found'}), 404
+    # Initialize metrics before registering blueprint
+    init_metrics(app)
+    app.register_blueprint(shorturl_bp)
 
-@shorturl_bp.route('/shorturl/<id>', methods=['DELETE'])
-@delete_counter  # Use decorator syntax
-def delete_short_url(id):
-    """Delete a short URL."""
-    result = mongo.db.urls.delete_one({'_id': id})
-    if result.deleted_count:
-        if url_gauge:  # Update gauge if initialized
-            total_urls = mongo.db.urls.count_documents({})
-            url_gauge.set(total_urls)
-        return jsonify({'message': 'URL deleted'})
-    return jsonify({'error': 'URL not found'}), 404
+    return app
