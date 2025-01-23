@@ -161,7 +161,7 @@ EOL
                         yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/prod.yaml
                         git add .
                         git commit -m "Update url-shortener to version ${env.NEW_VERSION}"
-                        git push origin main
+                        git push origin MAIN
                     """
                 }
             }
