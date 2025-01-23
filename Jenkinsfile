@@ -8,6 +8,7 @@ pipeline {
         FULL_IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
         AWS_DEFAULT_REGION = 'ap-south-1'
         BRANCH_NAME = "${env.BRANCH_NAME}"
+        GITOPS_REPO = 'git@github.com:itayyoh/gitops-shorturl.git'
     }
     
     stages {
@@ -67,7 +68,6 @@ pipeline {
                             docker build -t ${FULL_IMAGE_NAME}:${branchTag}-${GIT_COMMIT_SHORT} .
                         """
                     } 
-
                     else if (env.BRANCH_NAME == 'MAIN') {
                         sh """
                             docker build -t ${FULL_IMAGE_NAME}:${env.NEW_VERSION} .
@@ -104,7 +104,6 @@ MONGO_DATABASE=urlshortener
 EOL
                             
                             docker network create shorturl-ci_default || true
-
                             
                             # Start services
                             docker compose up -d
@@ -135,12 +134,36 @@ EOL
                         docker push ${FULL_IMAGE_NAME}:latest
 
                         # Configure Git user for tagging
-                        git config user.name "itayyoh"
-                        git config user.email "itay.yohanok10@gmail.com"
+                        git config user.name "Jenkins CI"
+                        git config user.email "jenkins@example.com"
 
                         # Create and push Git tag
                         git tag -a ${env.NEW_VERSION} -m "Release ${env.NEW_VERSION}"
                         git push origin ${env.NEW_VERSION}
+                    """
+                }
+            }
+        }
+
+        stage('Update GitOps') {
+            when {
+                branch 'MAIN'
+            }
+            steps {
+                withCredentials([sshUserPrivateKey(credentialsId: 'GITOPS_SSH_KEY', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        # Clone GitOps repo
+                        GIT_SSH_COMMAND="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" git clone ${GITOPS_REPO} gitops
+                        cd gitops
+
+                        # Update image tag in values files
+                        yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/dev.yaml
+                        yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/prod.yaml
+
+                        # Commit and push changes
+                        git add .
+                        git commit -m "Update url-shortener to version ${env.NEW_VERSION}"
+                        GIT_SSH_COMMAND="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" git push origin main
                     """
                 }
             }
