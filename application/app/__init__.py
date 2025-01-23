@@ -2,7 +2,6 @@ from flask import Flask
 from flask_pymongo import PyMongo
 from prometheus_flask_exporter import PrometheusMetrics
 import os
-from app.routes.shorturl import shorturl_bp, init_metrics
 
 
 # Initialize MongoDB
@@ -25,7 +24,7 @@ def create_app():
     metrics.init_app(app)
     
     # Register blueprints
-    from app.routes.shorturl import shorturl_bp
+    from app.routes.shorturl import shorturl_bp, init_metrics
     app.register_blueprint(shorturl_bp)
     init_metrics(app)
 
