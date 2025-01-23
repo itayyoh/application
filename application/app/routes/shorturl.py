@@ -71,6 +71,10 @@ def create_short_url(id):
         'original_url': data['originalUrl']
     }
     
+    existing_url = mongodb.db.urls.find_one({'_id': id})
+    if existing_url:
+        return jsonify({'error': 'URL already exists'}), 400
+    
     try:
         mongodb.db.urls.insert_one(url_mapping)
         if url_gauge:
