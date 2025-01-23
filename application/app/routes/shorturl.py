@@ -9,6 +9,12 @@ def init_metrics(app):
     global prometheus_metrics
     prometheus_metrics = PrometheusMetrics(app)
 
+    def register_metrics():
+        prometheus_metrics.counter('shorturl_create_total', 'Number of short URLs created')(create_short_url)
+        prometheus_metrics.counter('shorturl_get_total', 'Number of short URL retrievals')(get_short_url)
+    
+    register_metrics()
+
 @shorturl_bp.route('/')
 def index():
    return render_template('index.html')
