@@ -1,8 +1,9 @@
+# app/__init__.py
 from flask import Flask
 from flask_pymongo import PyMongo
 import os
 
-mongo = PyMongo()
+mongodb = PyMongo()  # Changed from mongo to mongodb
 
 def create_app():
     app = Flask(__name__)
@@ -13,7 +14,7 @@ def create_app():
     
     app.config["MONGO_URI"] = f"mongodb://{username}:{password}@url-shortener-mongodb:27017/{database}?authSource={database}"
     
-    mongo.init_app(app)
+    mongodb.init_app(app)  # Changed from mongo to mongodb
     
     from app.routes.shorturl import shorturl_bp, init_metrics
     

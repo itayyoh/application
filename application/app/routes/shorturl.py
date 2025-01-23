@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, render_template
-from app import mongo
+from app import mongodb
 from prometheus_flask_exporter import PrometheusMetrics
 from functools import wraps
 
@@ -72,9 +72,9 @@ def create_short_url(id):
     }
     
     try:
-        mongo.db.urls.insert_one(url_mapping)
+        mongodb.db.urls.insert_one(url_mapping)
         if url_gauge:
-            total_urls = mongo.db.urls.count_documents({})
+            total_urls = mongodb.db.urls.count_documents({})
             url_gauge.set(total_urls)
         return jsonify({'message': 'Short URL created', 'id': id}), 201
     except Exception as e:
@@ -84,7 +84,7 @@ def create_short_url(id):
 @metric_decorator(get_counter)
 def get_short_url(id):
     """Retrieve a short URL by ID."""
-    url = mongo.db.urls.find_one({'_id': id})
+    url = mongodb.db.urls.find_one({'_id': id})
     if url:
         url_data = {
             'id': url['_id'],
@@ -96,7 +96,7 @@ def get_short_url(id):
 @shorturl_bp.route('/shorturl', methods=['GET'])
 def list_short_urls():
     """List all short URLs."""
-    urls = mongo.db.urls.find()
+    urls = mongodb.db.urls.find()
     return jsonify({
         'urls': [url['_id'] for url in urls]
     })
@@ -109,7 +109,7 @@ def update_short_url(id):
     if not data or 'originalUrl' not in data:
         return jsonify({'error': 'originalUrl is required'}), 400
     
-    result = mongo.db.urls.update_one(
+    result = mongodb.db.urls.update_one(
         {'_id': id},
         {'$set': {'original_url': data['originalUrl']}}
     )
@@ -122,10 +122,10 @@ def update_short_url(id):
 @metric_decorator(delete_counter)
 def delete_short_url(id):
     """Delete a short URL."""
-    result = mongo.db.urls.delete_one({'_id': id})
+    result = mongodb.db.urls.delete_one({'_id': id})
     if result.deleted_count:
         if url_gauge:
-            total_urls = mongo.db.urls.count_documents({})
+            total_urls = mongodb.db.urls.count_documents({})
             url_gauge.set(total_urls)
         return jsonify({'message': 'URL deleted'})
     return jsonify({'error': 'URL not found'}), 404
