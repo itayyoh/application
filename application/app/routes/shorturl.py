@@ -7,13 +7,22 @@ prometheus_metrics = None
 
 def init_metrics(app):
     global prometheus_metrics
-    prometheus_metrics = PrometheusMetrics(app)
+    if prometheus_metrics is None:  # Only initialize if not already initialized
+        prometheus_metrics = PrometheusMetrics(app)
 
-    def register_metrics():
-        prometheus_metrics.counter('shorturl_create_total', 'Number of short URLs created')(create_short_url)
-        prometheus_metrics.counter('shorturl_get_total', 'Number of short URL retrievals')(get_short_url)
-    
-    register_metrics()
+        def register_metrics():
+            # Use a try-except block to handle potential duplicate registrations
+            try:
+                prometheus_metrics.counter('shorturl_create_total', 'Number of short URLs created')(create_short_url)
+                prometheus_metrics.counter('shorturl_get_total', 'Number of short URL retrievals')(get_short_url)
+            except ValueError as e:
+                # If metrics are already registered, just pass
+                if 'Duplicated timeseries' in str(e):
+                    pass
+                else:
+                    raise e
+
+        register_metrics()
 
 @shorturl_bp.route('/')
 def index():
