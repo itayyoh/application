@@ -155,6 +155,7 @@ EOL
                     sh """
                         GIT_SSH_COMMAND='ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no' git clone git@github.com:itayyoh/gitops-shorturl.git gitops
                         cd gitops
+                        git checkout MAIN  # Add this line to switch to MAIN branch
                         git config --global user.email "jenkins@example.com"    
                         git config --global user.name "Jenkins CI"     
                         yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/dev.yaml
