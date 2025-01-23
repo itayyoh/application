@@ -20,7 +20,6 @@ def index():
    return render_template('index.html')
 
 @shorturl_bp.route('/shorturl/<id>', methods=['POST'])
-@prometheus_metrics.counter('shorturl_create_total', 'Number of short URLs created')
 def create_short_url(id):
    data = request.get_json()
    if not data or 'originalUrl' not in data:
@@ -38,7 +37,6 @@ def create_short_url(id):
        return jsonify({'error': 'URL already exists'}), 400
 
 @shorturl_bp.route('/shorturl/<id>', methods=['GET'])
-@prometheus_metrics.counter('shorturl_get_total', 'Number of short URL retrievals')
 def get_short_url(id):
    url = mongo.db.urls.find_one({'_id': id})
    if url:
