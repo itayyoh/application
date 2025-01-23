@@ -9,6 +9,7 @@ pipeline {
         AWS_DEFAULT_REGION = 'ap-south-1'
         BRANCH_NAME = "${env.BRANCH_NAME}"
         GITOPS_REPO = 'git@github.com:itayyoh/gitops-shorturl.git'
+        
     }
     
     stages {
@@ -156,10 +157,11 @@ EOL
                         cd gitops
                         git config --global user.email "jenkins@example.com"    
                         git config --global user.name "Jenkins CI"     
-                        yq eval '.url-shortener.image.tag = "v1.0.8"' -i helm/values/dev.yaml
-                        yq eval '.url-shortener.image.tag = "v1.0.8"' -i helm/values/prod.yaml
+                        yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/dev.yaml
+                        yq eval '.url-shortener.image.tag = "${env.NEW_VERSION}"' -i helm/values/prod.yaml
                         git add .
-                        git commit -m "Update url-shortener to version v1.0.8"
+                        git commit -m "Update url-shortener to version ${env.NEW_VERSION}"
+                        git push origin main
                     """
                 }
             }
