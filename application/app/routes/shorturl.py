@@ -3,7 +3,11 @@ from app import mongo
 from prometheus_flask_exporter import PrometheusMetrics
 
 shorturl_bp = Blueprint('shorturl', __name__)
-prometheus_metrics = PrometheusMetrics(app)
+prometheus_metrics = None
+
+def init_metrics(app):
+    global prometheus_metrics
+    prometheus_metrics = PrometheusMetrics(app)
 
 @shorturl_bp.route('/')
 def index():
