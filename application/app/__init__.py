@@ -6,7 +6,6 @@ import os
 
 # Initialize MongoDB
 mongo = PyMongo()
-metrics = PrometheusMetrics(app=None)
 
 def create_app():
     app = Flask(__name__)
