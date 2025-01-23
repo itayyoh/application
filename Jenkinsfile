@@ -152,14 +152,14 @@ EOL
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'github-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                     sh """
-                        GIT_SSH_COMMAND="ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" git clone git@github.com:itayyoh/gitops-shorturl.git gitops
+                        GIT_SSH_COMMAND='ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no' git clone git@github.com:itayyoh/gitops-shorturl.git gitops
                         cd gitops
-                        git config user.email "jenkins@example.com"    
-                        git config user.name "Jenkins CI"                    
-                        yq eval '.url-shortener.image.tag = "v1.0.7"' -i helm/values/dev.yaml
-                        yq eval '.url-shortener.image.tag = "v1.0.7"' -i helm/values/prod.yaml
+                        git config --global user.email "jenkins@example.com"    
+                        git config --global user.name "Jenkins CI"     
+                        yq eval '.url-shortener.image.tag = "v1.0.8"' -i helm/values/dev.yaml
+                        yq eval '.url-shortener.image.tag = "v1.0.8"' -i helm/values/prod.yaml
                         git add .
-                        git commit -m "Update url-shortener to version v1.0.7"
+                        git commit -m "Update url-shortener to version v1.0.8"
                     """
                 }
             }
